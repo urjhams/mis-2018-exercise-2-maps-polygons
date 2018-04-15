@@ -33,9 +33,12 @@ public class MapsActivity extends FragmentActivity
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
+    private static String saveMarkNumberFile = "Mark_number";
+    private static String saveMArkContentFile = "Mark_content";
+    private static String saveMarkNumberKey = "number";
     private EditText textField;
     private int numberOfOldMarked;
-    private ArrayList<String> markedContentsArray;
+    private ArrayList<String> markedContentsArray = new ArrayList<>();
     private  SharedPreferences sharedPref_numberOfMarks;
     private SharedPreferences sharedPref_contentOfMarks;
 
@@ -54,13 +57,10 @@ public class MapsActivity extends FragmentActivity
             askForLocationPermission();
         }
 
-        sharedPref_numberOfMarks = getApplicationContext().
-                getSharedPreferences(getString(R.string.share_preference_number_file),
-                Context.MODE_PRIVATE);
-        sharedPref_contentOfMarks = getApplicationContext().
-                getSharedPreferences(getString(R.string.share_preference_marks_file),
-                Context.MODE_PRIVATE);
-
+        sharedPref_numberOfMarks = MapsActivity.this.
+                getSharedPreferences(saveMarkNumberFile, Context.MODE_PRIVATE);
+        sharedPref_contentOfMarks = MapsActivity.this.
+                getSharedPreferences(saveMArkContentFile, Context.MODE_PRIVATE);
     }
 
     @Override
@@ -70,22 +70,21 @@ public class MapsActivity extends FragmentActivity
         this.initLocateOf(deviceCurrentLocation(),"Current location", mMap);
 
         //get old values, if doesn't have yet, its equal 0
-        numberOfOldMarked =
-                numberOfOldMarked(getString(R.string.number_of_marks));
+        numberOfOldMarked = numberOfOldMarked(saveMarkNumberKey);
         //get all marked contents
         if (numberOfOldMarked > 0) {    //means it has old marked
             for (int key = 1; key <= numberOfOldMarked; key++) {
                 markedContentsArray.add(contentOfOldMarked(key));
             }
         }
-        int numTest = numberOfOldMarked(getString(R.string.number_of_marks));
 
         //add listener:
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 //dismiss keyboard
-                InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                InputMethodManager inputMng =
+                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
             }
         });
@@ -99,15 +98,14 @@ public class MapsActivity extends FragmentActivity
                 } else {
                     makeMarkerOf(latLng,text,mMap);
                     textField.setText("");
-
+                    numberOfOldMarked++;
                     //save key value
-                    saveKeyValue(getString(R.string.share_preference_number_file),numberOfOldMarked + 1);
+                    saveKeyValue(saveMarkNumberKey,numberOfOldMarked);
 
                     //save content value
                     saveContentValue(text,
                             latLng,
-                            getString(R.string.share_preference_marks_file),
-                            String.valueOf(numberOfOldMarked + 1));
+                            String.valueOf(numberOfOldMarked));
                 }
                 //dismiss keyboard
                 InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -210,19 +208,19 @@ public class MapsActivity extends FragmentActivity
     }
 
     private int numberOfOldMarked(String key) {
-        return sharedPref_numberOfMarks.getInt(key,0);
+        return this.sharedPref_numberOfMarks.getInt(key,0);
     }
 
     private String contentOfOldMarked(int key) {
-        return sharedPref_contentOfMarks.getString(String.valueOf(key),"DEFAULT");
+        return this.sharedPref_contentOfMarks.getString(String.valueOf(key),"DEFAULT");
     }
-    private void saveKeyValue(String refKey, int key) {
-        SharedPreferences.Editor editor = sharedPref_numberOfMarks.edit();
-        editor.putInt(refKey,key);
+    private void saveKeyValue(String key, int value) {
+        SharedPreferences.Editor editor = this.sharedPref_numberOfMarks.edit();
+        editor.putInt(key,value);
         editor.apply();
     }
-    private void saveContentValue(String mess, LatLng latLng, String refKey, String key) {
-        SharedPreferences.Editor editor = sharedPref_contentOfMarks.edit();
+    private void saveContentValue(String mess, LatLng latLng, String key) {
+        SharedPreferences.Editor editor = this.sharedPref_contentOfMarks.edit();
         editor.putString(key, mess + " \n " +
                 String.valueOf(latLng.latitude) + " \n " +
                 String.valueOf(latLng.longitude));

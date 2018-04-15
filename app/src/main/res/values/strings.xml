@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">polygons</string>
     <string name="title_activity_maps">Map</string>
+    <string name="share_preference_number_file">SAVED_NUMBER</string>
+    <string name="share_preference_marks_file">SAVED_MARKS</string>
+    <string name="number_of_marks">MARK_NUMBER</string>
 </resources>

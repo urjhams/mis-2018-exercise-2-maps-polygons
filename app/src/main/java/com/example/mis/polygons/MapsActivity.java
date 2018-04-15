@@ -20,10 +20,14 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
+    private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +48,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.setBuildingsEnabled(true);
-        this.setMarkerOf(deviceCurrentLocation(),"You are here my friend", mMap);
+        this.setMarkerOf(deviceCurrentLocation(),"Current location", mMap);
     }
 
     private boolean isGrantedPermission() {
@@ -60,12 +64,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void setMarkerOf(Location location, String title, GoogleMap map) {
         LatLng currentLatlng = new LatLng(location.getLatitude(), location.getLongitude());
-        map.addMarker(new MarkerOptions().position(currentLatlng).title(title));
+        map.addMarker(new MarkerOptions().
+                position(currentLatlng).
+                title(title).
+                snippet("Latitude: " + twoDecimalDouble.format(location.getLatitude()) +", Longitude: " + twoDecimalDouble.format(location.getLongitude()))
+        );
         //move camera to new marked with zoom level 15
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatlng, 15.0f));
         //zoom in to map til level 12
         map.animateCamera(CameraUpdateFactory.zoomIn());
-        //map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatlng,12.0f));
         map.animateCamera(CameraUpdateFactory.zoomTo(12.0f),2000,null);
     }
 
@@ -106,7 +113,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED ) {
                         // permission granted
                         Location current = deviceCurrentLocation();
-                        this.setMarkerOf(current,"You are here my friend", mMap);
+                        this.setMarkerOf(current,"Current location", mMap);
                     } else {
                         // not granted - permission denied
                         this.makeToast("Cannot located device, set default place to Weimar",this);
@@ -116,4 +123,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
+
+
 }

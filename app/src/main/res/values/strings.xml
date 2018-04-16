@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">polygons</string>
     <string name="title_activity_maps">Map</string>
+    <string name="marker_number_file">Mark_number</string>
+    <string name="marker_file">Mark_content</string>
+    <string name="marker_number_key">number</string>
 </resources>

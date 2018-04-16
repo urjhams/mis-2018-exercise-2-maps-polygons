@@ -33,12 +33,11 @@ public class MapsActivity extends FragmentActivity
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
-    private static String saveMarkNumberFile = "Mark_number";
-    private static String saveMArkContentFile = "Mark_content";
-    private static String saveMarkNumberKey = "number";
+    private String saveMarkNumberFile;
+    private String saveMArkContentFile;
+    private String saveMarkNumberKey;
     private EditText textField;
     private int numberOfOldMarked;
-    private ArrayList<String> markedContentsArray = new ArrayList<>();
     private  SharedPreferences sharedPref_numberOfMarks;
     private SharedPreferences sharedPref_contentOfMarks;
 
@@ -57,6 +56,11 @@ public class MapsActivity extends FragmentActivity
             askForLocationPermission();
         }
 
+        saveMarkNumberFile = this.getString(R.string.marker_number_file);
+        saveMArkContentFile = this.getString(R.string.marker_file);
+        saveMarkNumberKey = this.getString(R.string.marker_number_key);
+
+        // get the shared preferences which store old marks value and number of old marks
         sharedPref_numberOfMarks = MapsActivity.this.
                 getSharedPreferences(saveMarkNumberFile, Context.MODE_PRIVATE);
         sharedPref_contentOfMarks = MapsActivity.this.
@@ -74,7 +78,12 @@ public class MapsActivity extends FragmentActivity
         //get all marked contents
         if (numberOfOldMarked > 0) {    //means it has old marked
             for (int key = 1; key <= numberOfOldMarked; key++) {
-                markedContentsArray.add(contentOfOldMarked(key));
+                //markedContentsArray.add(contentOfOldMarked(key));
+                String[] content = getMarkValueFrom(contentOfOldMarked(key));
+                if (content.length >= 3) {
+                    LatLng locate = new LatLng(Double.parseDouble(content[1]),Double.parseDouble(content[2]));
+                    makeMarkerOf(locate,content[0],mMap);
+                }
             }
         }
 
@@ -82,6 +91,16 @@ public class MapsActivity extends FragmentActivity
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
+                //dismiss keyboard
+                InputMethodManager inputMng =
+                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+            }
+        });
+
+        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
+            @Override
+            public void onCameraMove() {
                 //dismiss keyboard
                 InputMethodManager inputMng =
                         (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -99,6 +118,7 @@ public class MapsActivity extends FragmentActivity
                     makeMarkerOf(latLng,text,mMap);
                     textField.setText("");
                     numberOfOldMarked++;
+
                     //save key value
                     saveKeyValue(saveMarkNumberKey,numberOfOldMarked);
 
@@ -107,6 +127,7 @@ public class MapsActivity extends FragmentActivity
                             latLng,
                             String.valueOf(numberOfOldMarked));
                 }
+
                 //dismiss keyboard
                 InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
@@ -116,9 +137,11 @@ public class MapsActivity extends FragmentActivity
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
+
                 //dismiss keyboard
                 InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+
                 return false;
             }
         });
@@ -187,10 +210,12 @@ public class MapsActivity extends FragmentActivity
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
+
+            //set the default location is Weimar
             Location defaultLocation = new Location("Weimar, Thuringia, Germany");
             defaultLocation.setLatitude(50.979492);
             defaultLocation.setLongitude(11.323544);
-            //set the default location is Weimar
+
             return new LatLng(defaultLocation.getLatitude(),defaultLocation.getLongitude());
         } else {
             //get current latitude and longitude
@@ -214,16 +239,24 @@ public class MapsActivity extends FragmentActivity
     private String contentOfOldMarked(int key) {
         return this.sharedPref_contentOfMarks.getString(String.valueOf(key),"DEFAULT");
     }
+
     private void saveKeyValue(String key, int value) {
         SharedPreferences.Editor editor = this.sharedPref_numberOfMarks.edit();
         editor.putInt(key,value);
         editor.apply();
     }
+
     private void saveContentValue(String mess, LatLng latLng, String key) {
         SharedPreferences.Editor editor = this.sharedPref_contentOfMarks.edit();
-        editor.putString(key, mess + " \n " +
-                String.valueOf(latLng.latitude) + " \n " +
+        editor.putString(key, mess + "\n" +
+                String.valueOf(latLng.latitude) + "\n" +
                 String.valueOf(latLng.longitude));
         editor.apply();
     }
+
+    private String[] getMarkValueFrom(String value) {
+        return value.split("\\r?\\n");
+    }
+
+
 }

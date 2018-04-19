@@ -25,7 +25,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 
 public class MapsActivity extends FragmentActivity
         implements OnMapReadyCallback{
@@ -199,10 +198,12 @@ public class MapsActivity extends FragmentActivity
 
     private LatLng deviceCurrentLocation() {
         LocationManager mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
             // NO_NEED_TO_DO: Consider calling (cause already handled bellow)
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -220,8 +221,13 @@ public class MapsActivity extends FragmentActivity
         } else {
             //get current latitude and longitude
             Location currentLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (currentLocation == null) {
+                currentLocation = mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+            }
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
+            //TODO: Location on real device always return null!!!!
+
             return new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
         }
     }

@@ -26,6 +26,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -36,6 +37,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -55,6 +57,7 @@ public class MapsActivity extends FragmentActivity
     private Set<String> contentsArraySet;
     private ArrayList<Marker> storedMarker;
     private Polygon userPolygon;
+    private Marker polygonMarker;
 
     //-------------------------------------- overriding functions ----------------------------------
 
@@ -346,8 +349,14 @@ public class MapsActivity extends FragmentActivity
                     new PolygonOptions().
                             add(list).
                             strokeColor(Color.argb(10,192,192,192)).
-                            fillColor(Color.argb(190,192,192,192));
+                            fillColor(Color.argb(160,192,192,192));
             userPolygon =  map.addPolygon(polygonOpt);
+            polygonMarker = map.addMarker(new MarkerOptions().
+                    title("center").
+                    position(centerOfPolygon(storedMarker)).
+                    icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).
+                    snippet("Here is for S")
+            );
             return true;
         }
         return false;
@@ -368,8 +377,21 @@ public class MapsActivity extends FragmentActivity
         } else {
             sender.setTag(0);
             userPolygon.remove();
+            if (polygonMarker != null) {
+                polygonMarker.remove();
+            }
             Button self = (Button) sender;
             self.setText("Start Polygon");
         }
+    }
+
+    private LatLng centerOfPolygon(List<Marker> points) {
+        double centerLat = 0.0;
+        double centerLong = 0.0;
+        for (int index = 0; index < points.size(); index ++) {
+            centerLat += points.get(index).getPosition().latitude;
+            centerLong += points.get(index).getPosition().longitude;
+        }
+        return new LatLng(centerLat / points.size(), centerLong / points.size());
     }
 }

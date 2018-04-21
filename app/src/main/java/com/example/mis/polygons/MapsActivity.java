@@ -15,7 +15,9 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.view.Gravity;
+import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -23,15 +25,17 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MapsActivity extends FragmentActivity
@@ -45,8 +49,11 @@ public class MapsActivity extends FragmentActivity
     private static String pref_key;
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
     private EditText textField;
+    private Button polygonButton;
     private SharedPreferences sharedPref_OldContents;
     private Set<String> contentsArraySet;
+    private ArrayList<Marker> storedMarker;
+    private Polygon userPolygon;
 
     //-------------------------------------- overriding functions ----------------------------------
 
@@ -55,6 +62,7 @@ public class MapsActivity extends FragmentActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         textField = findViewById(R.id.nameTextEdit);
+        polygonButton = findViewById(R.id.polygonButton);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -72,6 +80,9 @@ public class MapsActivity extends FragmentActivity
                 getSharedPreferences(pref_name, Context.MODE_PRIVATE);
 
         contentsArraySet = contentsOfOldMarks(pref_key);
+        storedMarker = new ArrayList<Marker>();
+        polygonButton.setTag(0);
+
         makeToast("- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
                 this);
     }
@@ -107,6 +118,23 @@ public class MapsActivity extends FragmentActivity
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
+                if ((Integer) polygonButton.getTag() == 1) {
+                    makeToast("Please stop the polygon first",MapsActivity.this);
+                    return;
+                }
+
+                String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
+                for (int index = 0; index < refer.length; index ++) {
+
+                    String first = firstStringFrom(refer[index]);
+                    String second = textField.getText().toString();
+
+                    if (first.equals(second)) {
+                        makeToast("Please choose different name",MapsActivity.this);
+                        return;
+                    }
+                }
+
                 String text = textField.getText().toString();
                 if (text.isEmpty()) {
                     makeToast("You must set a message",MapsActivity.this);
@@ -132,6 +160,10 @@ public class MapsActivity extends FragmentActivity
 
     @Override
     public void onInfoWindowLongClick(final Marker marker) {
+        if ((Integer) polygonButton.getTag() == 1) {
+            makeToast("Please stop the polygon first",this);
+            return;
+        }
         AlertDialog.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) ?
                 new AlertDialog.Builder(this,R.style.Theme_AppCompat_DayNight_Dialog_Alert) :
                 new AlertDialog.Builder(this);
@@ -139,22 +171,28 @@ public class MapsActivity extends FragmentActivity
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                //TODO: remove the mark
                 marker.remove();
 
-                //TODO: remove from content array
-                for (String text : contentsArraySet) {
+                String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
+                for (int index = 0; index < refer.length; index ++) {
 
-                    String first = firstStringFrom(text);
+                    String first = firstStringFrom(refer[index]);
                     String second = marker.getTitle();
 
                     if (first.equals(second)) {
-                        Object obj = text;
+                        Object obj = refer[index];
                         contentsArraySet.remove(obj);
                     }
                 }
 
-                //TODO: save the new array to sharedPreferences
+                Marker[] referMarker = storedMarker.toArray(new Marker[storedMarker.size()]);
+                //remove latlng array
+                for (int index = 0; index < referMarker.length; index ++) {
+                    if (referMarker[index].equals(marker)) {
+                        storedMarker.remove(referMarker[index]);
+                    }
+                }
+
                 saveCurrentMarks(pref_key);
             }
         }).setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -217,10 +255,7 @@ public class MapsActivity extends FragmentActivity
                         ", Longitude: " +
                         twoDecimalDouble.format(location.longitude)
                 ));
-        String content = title + "\n" +
-                String.valueOf(location.latitude) + "\n" +
-                String.valueOf(location.longitude);
-        marker.setTag(content);
+        storedMarker.add(marker);
     }
 
     private LatLng deviceCurrentLocation() {
@@ -260,7 +295,6 @@ public class MapsActivity extends FragmentActivity
         return this.sharedPref_OldContents.getStringSet(key,new HashSet<String>());
     }
 
-
     private void saveContentValue(String mess, LatLng latLng, String key) {
         SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
         String content = mess + "\n" +
@@ -297,6 +331,40 @@ public class MapsActivity extends FragmentActivity
         } catch (NullPointerException ex) {
 
         }
+    }
 
+    private boolean initPolygon(GoogleMap map) {
+        ArrayList<LatLng> positions = new ArrayList<LatLng>();
+        for (Marker marker : storedMarker) {
+            positions.add(marker.getPosition());
+        }
+        LatLng[] list = new LatLng[positions.size()];
+        list = positions.toArray(list);
+        if (list.length > 2) {
+            PolygonOptions polygonOpt = new PolygonOptions().add(list);
+            userPolygon =  map.addPolygon(polygonOpt);
+            return true;
+        }
+        return false;
+    }
+
+    private void removePolygon(GoogleMap map) {
+        removePolygon(map);
+    }
+
+    public void clickPolygon(View sender) {
+        final int status = (Integer) sender.getTag();
+        if (status == 0) {
+            if (initPolygon(mMap)) {
+                sender.setTag(1);
+                Button self = (Button) sender;
+                self.setText("Stop Polygon");
+            }
+        } else {
+            sender.setTag(0);
+            userPolygon.remove();
+            Button self = (Button) sender;
+            self.setText("Start Polygon");
+        }
     }
 }

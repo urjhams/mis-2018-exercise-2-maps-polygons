@@ -27,6 +27,19 @@
         android:paddingLeft="8dp"
         android:paddingRight="8dp"
         android:alpha="0.85"/>
+    <Button
+        android:id="@+id/polygonButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:text="Start Polygons"
+        android:layout_marginLeft="90dp"
+        android:layout_marginRight="90dp"
+        android:layout_marginBottom="13dp"
+        android:onClick="clickPolygon"
+        android:tag="0"
+        android:alpha="0.75"
+        android:backgroundTint="@android:color/white"/>
 
 </FrameLayout>
 

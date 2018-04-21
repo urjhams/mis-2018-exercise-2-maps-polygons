@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -161,7 +162,7 @@ public class MapsActivity extends FragmentActivity
     @Override
     public void onInfoWindowLongClick(final Marker marker) {
         if ((Integer) polygonButton.getTag() == 1) {
-            makeToast("Please stop the polygon first",this);
+            makeToast("Please end the polygon first",this);
             return;
         }
         AlertDialog.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) ?
@@ -341,7 +342,11 @@ public class MapsActivity extends FragmentActivity
         LatLng[] list = new LatLng[positions.size()];
         list = positions.toArray(list);
         if (list.length > 2) {
-            PolygonOptions polygonOpt = new PolygonOptions().add(list);
+            PolygonOptions polygonOpt =
+                    new PolygonOptions().
+                            add(list).
+                            strokeColor(Color.argb(10,192,192,192)).
+                            fillColor(Color.argb(190,192,192,192));
             userPolygon =  map.addPolygon(polygonOpt);
             return true;
         }
@@ -358,7 +363,7 @@ public class MapsActivity extends FragmentActivity
             if (initPolygon(mMap)) {
                 sender.setTag(1);
                 Button self = (Button) sender;
-                self.setText("Stop Polygon");
+                self.setText("End Polygon");
             }
         } else {
             sender.setTag(0);

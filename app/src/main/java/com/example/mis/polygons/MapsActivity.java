@@ -1,11 +1,14 @@
 package com.example.mis.polygons;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -20,25 +23,32 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class MapsActivity extends FragmentActivity
-        implements OnMapReadyCallback{
+        implements OnMapReadyCallback,
+        GoogleMap.OnMarkerClickListener,
+        GoogleMap.OnInfoWindowLongClickListener{
 
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
+    private static String pref_name;
+    private static String pref_key;
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
-    private String saveMarkNumberFile;
-    private String saveMArkContentFile;
-    private String saveMarkNumberKey;
     private EditText textField;
-    private int numberOfOldMarked;
-    private  SharedPreferences sharedPref_numberOfMarks;
-    private SharedPreferences sharedPref_contentOfMarks;
+    private SharedPreferences sharedPref_OldContents;
+    private Set<String> contentsArraySet;
+
+    //-------------------------------------- overriding functions ----------------------------------
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,34 +65,27 @@ public class MapsActivity extends FragmentActivity
             askForLocationPermission();
         }
 
-        saveMarkNumberFile = this.getString(R.string.marker_number_file);
-        saveMArkContentFile = this.getString(R.string.marker_file);
-        saveMarkNumberKey = this.getString(R.string.marker_number_key);
+        pref_key = getString(R.string.marker_pref_key);
+        pref_name = getString(R.string.marker_pref_name);
 
-        // get the shared preferences which store old marks value and number of old marks
-        sharedPref_numberOfMarks = MapsActivity.this.
-                getSharedPreferences(saveMarkNumberFile, Context.MODE_PRIVATE);
-        sharedPref_contentOfMarks = MapsActivity.this.
-                getSharedPreferences(saveMArkContentFile, Context.MODE_PRIVATE);
+        sharedPref_OldContents = MapsActivity.this.
+                getSharedPreferences(pref_name, Context.MODE_PRIVATE);
+
+        contentsArraySet = contentsOfOldMarks(pref_key);
+        makeToast("- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
+                this);
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {   //in here, the map has been already initialized
         mMap = googleMap;
-        mMap.setBuildingsEnabled(true);
         this.initLocateOf(deviceCurrentLocation(),"Current location", mMap);
 
-        //get old values, if doesn't have yet, its equal 0
-        numberOfOldMarked = numberOfOldMarked(saveMarkNumberKey);
-        //get all marked contents
-        if (numberOfOldMarked > 0) {    //means it has old marked
-            for (int key = 1; key <= numberOfOldMarked; key++) {
-                //markedContentsArray.add(contentOfOldMarked(key));
-                String[] content = getMarkValueFrom(contentOfOldMarked(key));
-                if (content.length >= 3) {
-                    LatLng locate = new LatLng(Double.parseDouble(content[1]),Double.parseDouble(content[2]));
-                    makeMarkerOf(locate,content[0],mMap);
-                }
+        for (String text : contentsArraySet) {
+            String[] content = getMarkValueFrom(text);
+            if (content.length >= 3) {
+                LatLng locate = new LatLng(Double.parseDouble(content[1]),Double.parseDouble(content[2]));
+                makeMarkerOf(locate,content[0],mMap);
             }
         }
 
@@ -91,22 +94,16 @@ public class MapsActivity extends FragmentActivity
             @Override
             public void onMapClick(LatLng latLng) {
                 //dismiss keyboard
-                InputMethodManager inputMng =
-                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+                hideKeyboardOf(textField);
             }
         });
-
         mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
             @Override
             public void onCameraMove() {
                 //dismiss keyboard
-                InputMethodManager inputMng =
-                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+                hideKeyboardOf(textField);
             }
         });
-
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
@@ -116,35 +113,59 @@ public class MapsActivity extends FragmentActivity
                 } else {
                     makeMarkerOf(latLng,text,mMap);
                     textField.setText("");
-                    numberOfOldMarked++;
+                    //add element to content Array, and then save to shared preferences
+                    saveContentValue(text,latLng,pref_key);
+                }
+                //dismiss keyboard
+                hideKeyboardOf(textField);
+            }
+        });
+        mMap.setOnMarkerClickListener(this);
+        mMap.setOnInfoWindowLongClickListener(this);
+    }
 
-                    //save key value
-                    saveKeyValue(saveMarkNumberKey,numberOfOldMarked);
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        hideKeyboardOf(textField);
+        return false;
+    }
 
-                    //save content value
-                    saveContentValue(text,
-                            latLng,
-                            String.valueOf(numberOfOldMarked));
+    @Override
+    public void onInfoWindowLongClick(final Marker marker) {
+        AlertDialog.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) ?
+                new AlertDialog.Builder(this,R.style.Theme_AppCompat_DayNight_Dialog_Alert) :
+                new AlertDialog.Builder(this);
+        builder.setTitle("Confirm").setMessage("Are you sure to delete this marker?");
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //TODO: remove the mark
+                marker.remove();
+
+                //TODO: remove from content array
+                for (String text : contentsArraySet) {
+
+                    String first = firstStringFrom(text);
+                    String second = marker.getTitle();
+
+                    if (first.equals(second)) {
+                        Object obj = text;
+                        contentsArraySet.remove(obj);
+                    }
                 }
 
-                //dismiss keyboard
-                InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+                //TODO: save the new array to sharedPreferences
+                saveCurrentMarks(pref_key);
             }
-        });
-
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+        }).setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
-            public boolean onMarkerClick(Marker marker) {
-
-                //dismiss keyboard
-                InputMethodManager inputMng = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
-
-                return false;
+            public void onClick(DialogInterface dialog, int which) {
+                // no nothing
             }
         });
+        builder.setIcon(R.drawable.common_google_signin_btn_icon_disabled).show();
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -166,6 +187,8 @@ public class MapsActivity extends FragmentActivity
         }
     }
 
+    //-------------------------------------- custom functions --------------------------------------
+
     private boolean isGrantedPermission() {
         return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED);
@@ -186,14 +209,18 @@ public class MapsActivity extends FragmentActivity
     }
 
     private void makeMarkerOf(LatLng location, String title, GoogleMap map) {
-        map.addMarker(new MarkerOptions().
+        Marker marker = map.addMarker(new MarkerOptions().
                 position(location).
                 title(title).
                 snippet("Latitude: " +
                         twoDecimalDouble.format(location.latitude) +
                         ", Longitude: " +
-                        twoDecimalDouble.format(location.longitude))
-        );
+                        twoDecimalDouble.format(location.longitude)
+                ));
+        String content = title + "\n" +
+                String.valueOf(location.latitude) + "\n" +
+                String.valueOf(location.longitude);
+        marker.setTag(content);
     }
 
     private LatLng deviceCurrentLocation() {
@@ -203,14 +230,6 @@ public class MapsActivity extends FragmentActivity
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            // NO_NEED_TO_DO: Consider calling (cause already handled bellow)
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
 
             //set the default location is Weimar
             Location defaultLocation = new Location("Weimar, Thuringia, Germany");
@@ -226,7 +245,6 @@ public class MapsActivity extends FragmentActivity
             }
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
-            //TODO: Location on real device always return null!!!!
 
             return new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
         }
@@ -238,25 +256,28 @@ public class MapsActivity extends FragmentActivity
         toast.show();
     }
 
-    private int numberOfOldMarked(String key) {
-        return this.sharedPref_numberOfMarks.getInt(key,0);
+    private Set<String> contentsOfOldMarks(String key) {
+        return this.sharedPref_OldContents.getStringSet(key,new HashSet<String>());
     }
 
-    private String contentOfOldMarked(int key) {
-        return this.sharedPref_contentOfMarks.getString(String.valueOf(key),"DEFAULT");
-    }
 
-    private void saveKeyValue(String key, int value) {
-        SharedPreferences.Editor editor = this.sharedPref_numberOfMarks.edit();
-        editor.putInt(key,value);
+    private void saveContentValue(String mess, LatLng latLng, String key) {
+        SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
+        String content = mess + "\n" +
+                String.valueOf(latLng.latitude) + "\n" +
+                String.valueOf(latLng.longitude);
+        editor.remove(key);
+        editor.apply();
+        contentsArraySet.add(content);
+        editor.putStringSet(key,contentsArraySet);
         editor.apply();
     }
 
-    private void saveContentValue(String mess, LatLng latLng, String key) {
-        SharedPreferences.Editor editor = this.sharedPref_contentOfMarks.edit();
-        editor.putString(key, mess + "\n" +
-                String.valueOf(latLng.latitude) + "\n" +
-                String.valueOf(latLng.longitude));
+    private void saveCurrentMarks(String key) {
+        SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
+        editor.remove(key);
+        editor.apply();
+        editor.putStringSet(key,contentsArraySet);
         editor.apply();
     }
 
@@ -264,5 +285,18 @@ public class MapsActivity extends FragmentActivity
         return value.split("\\r?\\n");
     }
 
+    private String firstStringFrom(String markerContent) {
+        return markerContent.split("\\r?\\n")[0];
+    }
 
+    private void hideKeyboardOf(EditText textField) {
+        InputMethodManager inputMng =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        try {
+            inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
+        } catch (NullPointerException ex) {
+
+        }
+
+    }
 }

@@ -1,7 +1,7 @@
 # mis-2018-exercise-2-maps-polygons
 Exercise 2 on MSI 2018 course
 - [Features](#features)
-- [Team Information](#team information)
+- [Team Information](#information)
 ## Features
 - A map view with current location on load and current location button.
 - A text entry above the map on topside.

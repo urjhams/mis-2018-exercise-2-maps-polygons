@@ -13,6 +13,6 @@ Exercise 2 on MSI 2018 course
 - Polygon: generate a polygon depend on the current markers on map.
 - Make the function that sorting markers in clock-wise through the center point, always generate a convex polygon.
 
-## Team Information
+## Information
 - Ngoc Le Quan Dinh - 119457 - ngoc.le.quan.dinh@uni-weimar.de 
 - He Ren - 119181 - he.ren@uni-weimar.de

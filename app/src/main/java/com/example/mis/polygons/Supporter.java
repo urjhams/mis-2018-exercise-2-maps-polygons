@@ -47,14 +47,6 @@ public class Supporter {
     public static ArrayList<LatLng> sortedPositionFrom(final LatLng center, ArrayList<LatLng> inputList) {
         //TODO: make sorting through clockwise
         ArrayList<LatLng> resultList = inputList;
-//        Comparator<LatLng> comparator = new Comparator<LatLng>() {
-//            @Override
-//            public int compare(LatLng o1, LatLng o2) {
-//                double degree1 = (Math.toDegrees(Math.atan2(o1.latitude * 1000 - center.latitude * 1000, o1.longitude * 1000 - center.longitude * 1000)) + 360) % 360;
-//                double degree2 = (Math.toDegrees(Math.atan2(o1.latitude * 1000 - center.latitude * 1000, o1.longitude * 1000 - center.longitude * 1000)) + 360) % 360;
-//                return Integer.compare((int) (degree1 * 1000000),(int) (degree2 * 1000000));
-//            }
-//        };
         Collections.sort(resultList, (LatLng point1, LatLng point2) -> {
             double degree1 = Math.toDegrees(Math.atan2(point1.longitude - center.longitude,point1.latitude - center.latitude) + 360) % 360;
             double degree2 = Math.toDegrees(Math.atan2(point2.longitude - center.longitude,point2.latitude - center.latitude) + 360) % 360;

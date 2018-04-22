@@ -15,12 +15,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
-import android.view.Gravity;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -32,13 +29,11 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class MapsActivity extends FragmentActivity
@@ -50,7 +45,6 @@ public class MapsActivity extends FragmentActivity
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
     private static String pref_name;
     private static String pref_key;
-    private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
     private EditText textField;
     private Button polygonButton;
     private SharedPreferences sharedPref_OldContents;
@@ -87,7 +81,8 @@ public class MapsActivity extends FragmentActivity
         storedMarker = new ArrayList<Marker>();
         polygonButton.setTag(0);
 
-        makeToast("- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
+        Supporter.makeToast(
+                "- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
                 this);
     }
 
@@ -109,39 +104,39 @@ public class MapsActivity extends FragmentActivity
             @Override
             public void onMapClick(LatLng latLng) {
                 //dismiss keyboard
-                hideKeyboardOf(textField);
+                Supporter.hideKeyboardOf(textField, MapsActivity.this);
             }
         });
         mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
             @Override
             public void onCameraMove() {
                 //dismiss keyboard
-                hideKeyboardOf(textField);
+                Supporter.hideKeyboardOf(textField, MapsActivity.this);
             }
         });
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
                 if ((Integer) polygonButton.getTag() == 1) {
-                    makeToast("Please stop the polygon first",MapsActivity.this);
+                    Supporter.makeToast("Please stop the polygon first",MapsActivity.this);
                     return;
                 }
 
                 String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
                 for (int index = 0; index < refer.length; index ++) {
 
-                    String first = firstStringFrom(refer[index]);
+                    String first = Supporter.firstStringFrom(refer[index]);
                     String second = textField.getText().toString();
 
                     if (first.equals(second)) {
-                        makeToast("Please choose different name",MapsActivity.this);
+                        Supporter.makeToast("Please choose different name",MapsActivity.this);
                         return;
                     }
                 }
 
                 String text = textField.getText().toString();
                 if (text.isEmpty()) {
-                    makeToast("You must set a message",MapsActivity.this);
+                    Supporter.makeToast("You must set a message",MapsActivity.this);
                 } else {
                     makeMarkerOf(latLng,text,mMap);
                     textField.setText("");
@@ -149,7 +144,7 @@ public class MapsActivity extends FragmentActivity
                     saveContentValue(text,latLng,pref_key);
                 }
                 //dismiss keyboard
-                hideKeyboardOf(textField);
+                Supporter.hideKeyboardOf(textField, MapsActivity.this);
             }
         });
         mMap.setOnMarkerClickListener(this);
@@ -158,14 +153,14 @@ public class MapsActivity extends FragmentActivity
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        hideKeyboardOf(textField);
+        Supporter.hideKeyboardOf(textField, MapsActivity.this);
         return false;
     }
 
     @Override
     public void onInfoWindowLongClick(final Marker marker) {
         if ((Integer) polygonButton.getTag() == 1) {
-            makeToast("Please end the polygon first",this);
+            Supporter.makeToast("Please end the polygon first",this);
             return;
         }
         AlertDialog.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) ?
@@ -180,7 +175,7 @@ public class MapsActivity extends FragmentActivity
                 String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
                 for (int index = 0; index < refer.length; index ++) {
 
-                    String first = firstStringFrom(refer[index]);
+                    String first = Supporter.firstStringFrom(refer[index]);
                     String second = marker.getTitle();
 
                     if (first.equals(second)) {
@@ -221,7 +216,7 @@ public class MapsActivity extends FragmentActivity
 
                     } else {
                         // not granted - permission denied
-                        this.makeToast("Cannot located device, set default place to Weimar",this);
+                        Supporter.makeToast("Cannot located device, set default place to Weimar",this);
                     }
                     return;
                 }
@@ -255,13 +250,15 @@ public class MapsActivity extends FragmentActivity
                 position(location).
                 title(title).
                 snippet("Latitude: " +
-                        twoDecimalDouble.format(location.latitude) +
+                        Supporter.getTwoDecimalDouble().format(location.latitude) +
                         ", Longitude: " +
-                        twoDecimalDouble.format(location.longitude)
+                        Supporter.getTwoDecimalDouble().format(location.longitude)
                 ));
+        System.out.println(title);
         storedMarker.add(marker);
     }
 
+    @NonNull
     private LatLng deviceCurrentLocation() {
         LocationManager mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -287,12 +284,6 @@ public class MapsActivity extends FragmentActivity
 
             return new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
         }
-    }
-
-    private void makeToast(String content, Context context) {
-        Toast toast = Toast.makeText(context,content,Toast.LENGTH_SHORT);
-        toast.setGravity(Gravity.CENTER,0,0);
-        toast.show();
     }
 
     private Set<String> contentsOfOldMarks(String key) {
@@ -323,27 +314,18 @@ public class MapsActivity extends FragmentActivity
         return value.split("\\r?\\n");
     }
 
-    private String firstStringFrom(String markerContent) {
-        return markerContent.split("\\r?\\n")[0];
-    }
-
-    private void hideKeyboardOf(EditText textField) {
-        InputMethodManager inputMng =
-                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        try {
-            inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
-        } catch (NullPointerException ex) {
-
-        }
-    }
-
     private boolean initPolygon(GoogleMap map) {
-        ArrayList<LatLng> positions = new ArrayList<LatLng>();
+        ArrayList<LatLng> positions = new ArrayList<>();
         for (Marker marker : storedMarker) {
             positions.add(marker.getPosition());
         }
+
+        //sort the list (may be by clockwise)
         LatLng[] list = new LatLng[positions.size()];
-        list = positions.toArray(list);
+        LatLng centerPoint = centerOfPolygon(storedMarker);
+        System.out.println(positions);
+        list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
+        System.out.println(list);
         if (list.length > 2) {
             PolygonOptions polygonOpt =
                     new PolygonOptions().
@@ -351,19 +333,21 @@ public class MapsActivity extends FragmentActivity
                             strokeColor(Color.argb(10,192,192,192)).
                             fillColor(Color.argb(160,192,192,192));
             userPolygon =  map.addPolygon(polygonOpt);
+            double areaPolygon = areaOfPolygon(storedMarker);
             polygonMarker = map.addMarker(new MarkerOptions().
-                    title("center").
-                    position(centerOfPolygon(storedMarker)).
+                    title("Area").
+                    position(centerPoint).
                     icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).
-                    snippet("Here is for S")
+                    snippet("" +
+                            ((areaPolygon >= 1000) ?
+                                    Supporter.getTwoDecimalDouble().format(Supporter.changeToKmFrom(areaPolygon)) +
+                                            " km\u00b2" :
+                                    Supporter.getTwoDecimalDouble().format(areaPolygon) +
+                                            " m\u00b2"))
             );
             return true;
         }
         return false;
-    }
-
-    private void removePolygon(GoogleMap map) {
-        removePolygon(map);
     }
 
     public void clickPolygon(View sender) {
@@ -383,6 +367,17 @@ public class MapsActivity extends FragmentActivity
             Button self = (Button) sender;
             self.setText("Start Polygon");
         }
+    }
+
+    //----------- http://googlemaps.github.io/android-maps-utils/javadoc/com/google/maps/android/SphericalUtil.html
+    // in gradle: 'com.google.maps.android:android-maps-utils:0.5+'
+    private double areaOfPolygon(List<Marker> points) {
+        List<LatLng> positionList = new ArrayList<>();
+        for (int index = 0; index < points.size(); index++) {
+            Marker mark = points.get(index);
+            positionList.add(mark.getPosition());
+        }
+        return SphericalUtil.computeArea(positionList); //square meter
     }
 
     private LatLng centerOfPolygon(List<Marker> points) {

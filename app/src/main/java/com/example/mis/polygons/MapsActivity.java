@@ -32,9 +32,7 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.maps.android.SphericalUtil;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class MapsActivity extends FragmentActivity
         implements OnMapReadyCallback,
@@ -44,11 +42,10 @@ public class MapsActivity extends FragmentActivity
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
     private static String pref_name;
-    private static String pref_key;
     private EditText textField;
     private Button polygonButton;
     private SharedPreferences sharedPref_OldContents;
-    private Set<String> contentsArraySet;
+    private ArrayList<String> contentsArray;
     private ArrayList<Marker> storedMarker;
     private Polygon userPolygon;
     private Marker polygonMarker;
@@ -71,13 +68,12 @@ public class MapsActivity extends FragmentActivity
             askForLocationPermission();
         }
 
-        pref_key = getString(R.string.marker_pref_key);
         pref_name = getString(R.string.marker_pref_name);
 
         sharedPref_OldContents = MapsActivity.this.
                 getSharedPreferences(pref_name, Context.MODE_PRIVATE);
 
-        contentsArraySet = contentsOfOldMarks(pref_key);
+        getContentsOfOldMarks();
         storedMarker = new ArrayList<Marker>();
         polygonButton.setTag(0);
 
@@ -91,7 +87,7 @@ public class MapsActivity extends FragmentActivity
         mMap = googleMap;
         this.initLocateOf(deviceCurrentLocation(),"Current location", mMap);
 
-        for (String text : contentsArraySet) {
+        for (String text : contentsArray) {
             String[] content = getMarkValueFrom(text);
             if (content.length >= 3) {
                 LatLng locate = new LatLng(Double.parseDouble(content[1]),Double.parseDouble(content[2]));
@@ -122,7 +118,7 @@ public class MapsActivity extends FragmentActivity
                     return;
                 }
 
-                String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
+                String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
                 for (int index = 0; index < refer.length; index ++) {
 
                     String first = Supporter.firstStringFrom(refer[index]);
@@ -141,7 +137,7 @@ public class MapsActivity extends FragmentActivity
                     makeMarkerOf(latLng,text,mMap);
                     textField.setText("");
                     //add element to content Array, and then save to shared preferences
-                    saveContentValue(text,latLng,pref_key);
+                    saveContentValue(text,latLng);
                 }
                 //dismiss keyboard
                 Supporter.hideKeyboardOf(textField, MapsActivity.this);
@@ -167,33 +163,30 @@ public class MapsActivity extends FragmentActivity
                 new AlertDialog.Builder(this,R.style.Theme_AppCompat_DayNight_Dialog_Alert) :
                 new AlertDialog.Builder(this);
         builder.setTitle("Confirm").setMessage("Are you sure to delete this marker?");
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                marker.remove();
+        builder.setPositiveButton("Yes", (dialog, which) -> {
+            marker.remove();
 
-                String[] refer = contentsArraySet.toArray(new String[contentsArraySet.size()]);
-                for (int index = 0; index < refer.length; index ++) {
+            String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
+            for (int index = 0; index < refer.length; index ++) {
 
-                    String first = Supporter.firstStringFrom(refer[index]);
-                    String second = marker.getTitle();
+                String first = Supporter.firstStringFrom(refer[index]);
+                String second = marker.getTitle();
 
-                    if (first.equals(second)) {
-                        Object obj = refer[index];
-                        contentsArraySet.remove(obj);
-                    }
+                if (first.equals(second)) {
+                    Object obj = refer[index];
+                    contentsArray.remove(obj);
                 }
-
-                Marker[] referMarker = storedMarker.toArray(new Marker[storedMarker.size()]);
-                //remove latlng array
-                for (int index = 0; index < referMarker.length; index ++) {
-                    if (referMarker[index].equals(marker)) {
-                        storedMarker.remove(referMarker[index]);
-                    }
-                }
-
-                saveCurrentMarks(pref_key);
             }
+
+            Marker[] referMarker = storedMarker.toArray(new Marker[storedMarker.size()]);
+            //remove latlng array
+            for (int index = 0; index < referMarker.length; index ++) {
+                if (referMarker[index].equals(marker)) {
+                    storedMarker.remove(referMarker[index]);
+                }
+            }
+
+            saveCurrentMarks();
         }).setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -286,27 +279,40 @@ public class MapsActivity extends FragmentActivity
         }
     }
 
-    private Set<String> contentsOfOldMarks(String key) {
-        return this.sharedPref_OldContents.getStringSet(key,new HashSet<String>());
+    private void getContentsOfOldMarks() {
+        if (contentsArray == null) {
+            contentsArray = new ArrayList<>();
+        }
+        int maxIndex = this.sharedPref_OldContents.getInt("Max index",0);
+        for (int index = 0; index <= maxIndex; index++) {
+            String content = this.sharedPref_OldContents.getString(String.valueOf(index),"");
+            contentsArray.add(index,content);
+        }
     }
 
-    private void saveContentValue(String mess, LatLng latLng, String key) {
+    private void saveContentValue(String mess, LatLng latLng) {
         SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
         String content = mess + "\n" +
                 String.valueOf(latLng.latitude) + "\n" +
                 String.valueOf(latLng.longitude);
-        editor.remove(key);
-        editor.apply();
-        contentsArraySet.add(content);
-        editor.putStringSet(key,contentsArraySet);
+        contentsArray.add(contentsArray.size(),content);
+        int index = 0;
+        for (String markContent : contentsArray) {
+            editor.putString(String.valueOf(index),markContent);
+            index++;
+        }
+        editor.putInt("Max index", index);
         editor.apply();
     }
 
-    private void saveCurrentMarks(String key) {
+    private void saveCurrentMarks() {
         SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
-        editor.remove(key);
-        editor.apply();
-        editor.putStringSet(key,contentsArraySet);
+        int index = 0;
+        for (String content : contentsArray) {
+            editor.putString(String.valueOf(index),content);
+            index++;
+        }
+        editor.putInt("Max index", index);
         editor.apply();
     }
 
@@ -323,9 +329,8 @@ public class MapsActivity extends FragmentActivity
         //sort the list (may be by clockwise)
         LatLng[] list = new LatLng[positions.size()];
         LatLng centerPoint = centerOfPolygon(storedMarker);
-        System.out.println(positions);
-        list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
-        System.out.println(list);
+        //list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
+        list = positions.toArray(list);
         if (list.length > 2) {
             PolygonOptions polygonOpt =
                     new PolygonOptions().

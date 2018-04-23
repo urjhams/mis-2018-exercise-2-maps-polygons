@@ -9,11 +9,14 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.maps.android.SphericalUtil;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 public class Supporter {
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
@@ -60,5 +63,26 @@ public class Supporter {
         defaultLocation.setLatitude(50.979492);
         defaultLocation.setLongitude(11.323544);
         return defaultLocation;
+    }
+
+    //----------- http://googlemaps.github.io/android-maps-utils/javadoc/com/google/maps/android/SphericalUtil.html
+    // in gradle: 'com.google.maps.android:android-maps-utils:0.5+'
+    public static double areaOfPolygon(List<Marker> points) {
+        List<LatLng> positionList = new ArrayList<>();
+        for (int index = 0; index < points.size(); index++) {
+            Marker mark = points.get(index);
+            positionList.add(mark.getPosition());
+        }
+        return SphericalUtil.computeArea(positionList); //square meter
+    }
+
+    public static LatLng centerOfPolygon(List<Marker> points) {
+        double centerLat = 0.0;
+        double centerLong = 0.0;
+        for (int index = 0; index < points.size(); index ++) {
+            centerLat += points.get(index).getPosition().latitude;
+            centerLong += points.get(index).getPosition().longitude;
+        }
+        return new LatLng(centerLat / points.size(), centerLong / points.size());
     }
 }

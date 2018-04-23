@@ -3,7 +3,6 @@ package com.example.mis.polygons;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -29,10 +28,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.maps.android.SphericalUtil;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class MapsActivity extends FragmentActivity
         implements OnMapReadyCallback,
@@ -59,6 +56,7 @@ public class MapsActivity extends FragmentActivity
         setContentView(R.layout.activity_maps);
         initResource();
         initMap();
+        getContentsOfOldMarks();
         if (!isGrantedPermission()) {
             askForLocationPermission();
         }
@@ -68,7 +66,7 @@ public class MapsActivity extends FragmentActivity
     public void onMapReady(GoogleMap googleMap) {   //in here, the map has been already initialized
 
         mMap = googleMap;
-        this.initLocateOf(deviceCurrentLocation(),"Current location", mMap);
+        initLocateOf(deviceCurrentLocation(),"Current location", mMap);
         for (String text : contentsArray) {
             String[] content = getMarkValueFrom(text);
             if (content.length >= 3) {
@@ -203,7 +201,6 @@ public class MapsActivity extends FragmentActivity
         sharedPref_OldContents = MapsActivity.this.
                 getSharedPreferences(pref_name, Context.MODE_PRIVATE);
 
-        getContentsOfOldMarks();
         storedMarker = new ArrayList<>();
         polygonButton.setTag(0);
 
@@ -322,7 +319,7 @@ public class MapsActivity extends FragmentActivity
         }
 
         LatLng[] list = new LatLng[positions.size()];
-        LatLng centerPoint = centerOfPolygon(storedMarker);
+        LatLng centerPoint = Supporter.centerOfPolygon(storedMarker);
 
         //sort the list (clockwise)
         //list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
@@ -335,7 +332,7 @@ public class MapsActivity extends FragmentActivity
                             strokeColor(Color.argb(10,192,192,192)).
                             fillColor(Color.argb(160,192,192,192));
             userPolygon =  map.addPolygon(polygonOpt);
-            double areaPolygon = areaOfPolygon(storedMarker);
+            double areaPolygon = Supporter.areaOfPolygon(storedMarker);
             polygonMarker = map.addMarker(new MarkerOptions().
                     title("Area").
                     position(centerPoint).
@@ -371,24 +368,4 @@ public class MapsActivity extends FragmentActivity
         }
     }
 
-    //----------- http://googlemaps.github.io/android-maps-utils/javadoc/com/google/maps/android/SphericalUtil.html
-    // in gradle: 'com.google.maps.android:android-maps-utils:0.5+'
-    private double areaOfPolygon(List<Marker> points) {
-        List<LatLng> positionList = new ArrayList<>();
-        for (int index = 0; index < points.size(); index++) {
-            Marker mark = points.get(index);
-            positionList.add(mark.getPosition());
-        }
-        return SphericalUtil.computeArea(positionList); //square meter
-    }
-
-    private LatLng centerOfPolygon(List<Marker> points) {
-        double centerLat = 0.0;
-        double centerLong = 0.0;
-        for (int index = 0; index < points.size(); index ++) {
-            centerLat += points.get(index).getPosition().latitude;
-            centerLong += points.get(index).getPosition().longitude;
-        }
-        return new LatLng(centerLat / points.size(), centerLong / points.size());
-    }
 }

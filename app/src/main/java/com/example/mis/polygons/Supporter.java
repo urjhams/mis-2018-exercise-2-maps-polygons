@@ -2,6 +2,7 @@ package com.example.mis.polygons;
 
 import android.app.Activity;
 import android.content.Context;
+import android.location.Location;
 import android.view.Gravity;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -44,14 +45,20 @@ public class Supporter {
         return twoDecimalDouble;
     }
 
-    public static ArrayList<LatLng> sortedPositionFrom(final LatLng center, ArrayList<LatLng> inputList) {
-        //TODO: make sorting through clockwise
-        ArrayList<LatLng> resultList = inputList;
-        Collections.sort(resultList, (LatLng point1, LatLng point2) -> {
-            double degree1 = Math.toDegrees(Math.atan2(point1.longitude - center.longitude,point1.latitude - center.latitude) + 360) % 360;
-            double degree2 = Math.toDegrees(Math.atan2(point2.longitude - center.longitude,point2.latitude - center.latitude) + 360) % 360;
-            return (int) (degree1 - degree2);
-        });
-        return resultList ;
+//    public static ArrayList<LatLng> sortedPositionFrom(final LatLng center, ArrayList<LatLng> inputList) {
+//        ArrayList<LatLng> resultList = inputList;
+//        Collections.sort(resultList, (LatLng point1, LatLng point2) -> {
+//            double degree1 = Math.toDegrees(Math.atan2(point1.longitude - center.longitude,point1.latitude - center.latitude) + 360) % 360;
+//            double degree2 = Math.toDegrees(Math.atan2(point2.longitude - center.longitude,point2.latitude - center.latitude) + 360) % 360;
+//            return (int) (degree1 - degree2);
+//        });
+//        return resultList ;
+//    }
+
+    public static Location defaultLocation() {
+        Location defaultLocation = new Location("Weimar, Thuringia, Germany");
+        defaultLocation.setLatitude(50.979492);
+        defaultLocation.setLongitude(11.323544);
+        return defaultLocation;
     }
 }

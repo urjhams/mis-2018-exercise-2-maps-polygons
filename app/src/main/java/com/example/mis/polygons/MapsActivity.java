@@ -42,6 +42,7 @@ public class MapsActivity extends FragmentActivity
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
     private static String pref_name;
+    private static String pref_key_index;
     private EditText textField;
     private Button polygonButton;
     private SharedPreferences sharedPref_OldContents;
@@ -56,37 +57,18 @@ public class MapsActivity extends FragmentActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        textField = findViewById(R.id.nameTextEdit);
-        polygonButton = findViewById(R.id.polygonButton);
-
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
-
+        initResource();
+        initMap();
         if (!isGrantedPermission()) {
             askForLocationPermission();
         }
-
-        pref_name = getString(R.string.marker_pref_name);
-
-        sharedPref_OldContents = MapsActivity.this.
-                getSharedPreferences(pref_name, Context.MODE_PRIVATE);
-
-        getContentsOfOldMarks();
-        storedMarker = new ArrayList<Marker>();
-        polygonButton.setTag(0);
-
-        Supporter.makeToast(
-                "- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
-                this);
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {   //in here, the map has been already initialized
+
         mMap = googleMap;
         this.initLocateOf(deviceCurrentLocation(),"Current location", mMap);
-
         for (String text : contentsArray) {
             String[] content = getMarkValueFrom(text);
             if (content.length >= 3) {
@@ -96,54 +78,49 @@ public class MapsActivity extends FragmentActivity
         }
 
         //add listener:
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-            @Override
-            public void onMapClick(LatLng latLng) {
-                //dismiss keyboard
-                Supporter.hideKeyboardOf(textField, MapsActivity.this);
-            }
+        mMap.setOnMapClickListener(latLng -> {
+            //dismiss keyboard
+            Supporter.hideKeyboardOf(textField, MapsActivity.this);
         });
-        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
-            @Override
-            public void onCameraMove() {
-                //dismiss keyboard
-                Supporter.hideKeyboardOf(textField, MapsActivity.this);
-            }
+
+        mMap.setOnCameraMoveListener(() -> {
+            //dismiss keyboard
+            Supporter.hideKeyboardOf(textField, MapsActivity.this);
         });
-        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-            @Override
-            public void onMapLongClick(LatLng latLng) {
-                if ((Integer) polygonButton.getTag() == 1) {
-                    Supporter.makeToast("Please stop the polygon first",MapsActivity.this);
+
+        mMap.setOnMapLongClickListener(latLng -> {
+            if ((Integer) polygonButton.getTag() == 1) {
+                Supporter.makeToast("Please stop the polygon first",MapsActivity.this);
+                return;
+            }
+
+            String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
+            for (int index = 0; index < refer.length; index ++) {
+
+                String first = Supporter.firstStringFrom(refer[index]);
+                String second = textField.getText().toString();
+
+                if (first.equals(second)) {
+                    Supporter.makeToast("Please choose different name",MapsActivity.this);
                     return;
                 }
-
-                String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
-                for (int index = 0; index < refer.length; index ++) {
-
-                    String first = Supporter.firstStringFrom(refer[index]);
-                    String second = textField.getText().toString();
-
-                    if (first.equals(second)) {
-                        Supporter.makeToast("Please choose different name",MapsActivity.this);
-                        return;
-                    }
-                }
-
-                String text = textField.getText().toString();
-                if (text.isEmpty()) {
-                    Supporter.makeToast("You must set a message",MapsActivity.this);
-                } else {
-                    makeMarkerOf(latLng,text,mMap);
-                    textField.setText("");
-                    //add element to content Array, and then save to shared preferences
-                    saveContentValue(text,latLng);
-                }
-                //dismiss keyboard
-                Supporter.hideKeyboardOf(textField, MapsActivity.this);
             }
+
+            String text = textField.getText().toString();
+            if (text.isEmpty()) {
+                Supporter.makeToast("You must set a message",MapsActivity.this);
+            } else {
+                makeMarkerOf(latLng,text,mMap);
+                textField.setText("");
+                //add element to content Array, and then save to shared preferences
+                saveContentValue(text,latLng);
+            }
+            //dismiss keyboard
+            Supporter.hideKeyboardOf(textField, MapsActivity.this);
         });
+
         mMap.setOnMarkerClickListener(this);
+
         mMap.setOnInfoWindowLongClickListener(this);
     }
 
@@ -187,11 +164,8 @@ public class MapsActivity extends FragmentActivity
             }
 
             saveCurrentMarks();
-        }).setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // no nothing
-            }
+        }).setNegativeButton("No", (dialog, which) -> {
+            // no nothing
         });
         builder.setIcon(R.drawable.common_google_signin_btn_icon_disabled).show();
     }
@@ -218,6 +192,32 @@ public class MapsActivity extends FragmentActivity
     }
 
     //-------------------------------------- custom functions --------------------------------------
+
+    private void initResource() {
+        textField = findViewById(R.id.nameTextEdit);
+        polygonButton = findViewById(R.id.polygonButton);
+
+        pref_name = getString(R.string.marker_pref_name);
+        pref_key_index = getString(R.string.marker_pref_key);
+
+        sharedPref_OldContents = MapsActivity.this.
+                getSharedPreferences(pref_name, Context.MODE_PRIVATE);
+
+        getContentsOfOldMarks();
+        storedMarker = new ArrayList<>();
+        polygonButton.setTag(0);
+
+        Supporter.makeToast(
+                "- Put String and hold on Map to mark\n- Hold on info windows of each marker for delete it",
+                this);
+
+    }
+
+    private void initMap() {
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+    }
 
     private boolean isGrantedPermission() {
         return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -247,7 +247,6 @@ public class MapsActivity extends FragmentActivity
                         ", Longitude: " +
                         Supporter.getTwoDecimalDouble().format(location.longitude)
                 ));
-        System.out.println(title);
         storedMarker.add(marker);
     }
 
@@ -260,18 +259,14 @@ public class MapsActivity extends FragmentActivity
                 ActivityCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
-            //set the default location is Weimar
-            Location defaultLocation = new Location("Weimar, Thuringia, Germany");
-            defaultLocation.setLatitude(50.979492);
-            defaultLocation.setLongitude(11.323544);
-
-            return new LatLng(defaultLocation.getLatitude(),defaultLocation.getLongitude());
+            //set the default location
+            return new LatLng(Supporter.defaultLocation().getLatitude(),
+                    Supporter.defaultLocation().getLongitude());
         } else {
             //get current latitude and longitude
-            Location currentLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (currentLocation == null) {
-                currentLocation = mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-            }
+            Location currentLocation = (mLocationManager != null) ?
+                    mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) :
+                    mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
 
@@ -283,7 +278,7 @@ public class MapsActivity extends FragmentActivity
         if (contentsArray == null) {
             contentsArray = new ArrayList<>();
         }
-        int maxIndex = this.sharedPref_OldContents.getInt("Max index",0);
+        int maxIndex = this.sharedPref_OldContents.getInt(pref_key_index,0);
         for (int index = 0; index <= maxIndex; index++) {
             String content = this.sharedPref_OldContents.getString(String.valueOf(index),"");
             contentsArray.add(index,content);
@@ -301,7 +296,7 @@ public class MapsActivity extends FragmentActivity
             editor.putString(String.valueOf(index),markContent);
             index++;
         }
-        editor.putInt("Max index", index);
+        editor.putInt(pref_key_index, index);
         editor.apply();
     }
 
@@ -312,7 +307,7 @@ public class MapsActivity extends FragmentActivity
             editor.putString(String.valueOf(index),content);
             index++;
         }
-        editor.putInt("Max index", index);
+        editor.putInt(pref_key_index, index);
         editor.apply();
     }
 
@@ -326,10 +321,12 @@ public class MapsActivity extends FragmentActivity
             positions.add(marker.getPosition());
         }
 
-        //sort the list (may be by clockwise)
         LatLng[] list = new LatLng[positions.size()];
         LatLng centerPoint = centerOfPolygon(storedMarker);
+
+        //sort the list (clockwise)
         //list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
+
         list = positions.toArray(list);
         if (list.length > 2) {
             PolygonOptions polygonOpt =

@@ -34,7 +34,7 @@ import java.util.ArrayList;
 public class MapsActivity extends FragmentActivity
         implements OnMapReadyCallback,
         GoogleMap.OnMarkerClickListener,
-        GoogleMap.OnInfoWindowLongClickListener{
+        GoogleMap.OnInfoWindowLongClickListener {
 
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
@@ -167,6 +167,8 @@ public class MapsActivity extends FragmentActivity
         });
         builder.setIcon(R.drawable.common_google_signin_btn_icon_disabled).show();
     }
+
+
 
 
     @Override
@@ -320,11 +322,19 @@ public class MapsActivity extends FragmentActivity
 
         LatLng[] list = new LatLng[positions.size()];
         LatLng centerPoint = Supporter.centerOfPolygon(storedMarker);
+        if (list.length > 3) {
+            if (Supporter.availablePolygon(positions)) {
+                list = positions.toArray(list);
+            } else {
+                Supporter.makeToast("The order of markers not available for drawing a polygon, start generate polygon by clockwise order",this);
+                //sort the list (clockwise)
+                list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
+            }
 
-        //sort the list (clockwise)
-        //list = Supporter.sortedPositionFrom(centerPoint,positions).toArray(list);
+        } else {
+            list = positions.toArray(list);
+        }
 
-        list = positions.toArray(list);
         if (list.length > 2) {
             PolygonOptions polygonOpt =
                     new PolygonOptions().

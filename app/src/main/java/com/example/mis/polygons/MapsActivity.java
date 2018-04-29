@@ -1,6 +1,7 @@
 package com.example.mis.polygons;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -38,7 +39,6 @@ public class MapsActivity extends FragmentActivity
 
     private GoogleMap mMap;
     private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
-    private static String pref_name;
     private static String pref_key_index;
     private EditText textField;
     private Button polygonButton;
@@ -66,7 +66,7 @@ public class MapsActivity extends FragmentActivity
     public void onMapReady(GoogleMap googleMap) {   //in here, the map has been already initialized
 
         mMap = googleMap;
-        initLocateOf(deviceCurrentLocation(),"Current location", mMap);
+        initLocateOf(deviceCurrentLocation(), mMap);
         for (String text : contentsArray) {
             String[] content = getMarkValueFrom(text);
             if (content.length >= 3) {
@@ -93,13 +93,11 @@ public class MapsActivity extends FragmentActivity
             }
 
             String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
-            for (int index = 0; index < refer.length; index ++) {
-
-                String first = Supporter.firstStringFrom(refer[index]);
+            for (String aRefer : refer) {
+                String first = Supporter.firstStringFrom(aRefer);
                 String second = textField.getText().toString();
-
                 if (first.equals(second)) {
-                    Supporter.makeToast("Please choose different name",MapsActivity.this);
+                    Supporter.makeToast("Please choose different name", MapsActivity.this);
                     return;
                 }
             }
@@ -142,22 +140,21 @@ public class MapsActivity extends FragmentActivity
             marker.remove();
 
             String[] refer = contentsArray.toArray(new String[contentsArray.size()]);
-            for (int index = 0; index < refer.length; index ++) {
+            for (String element : refer) {
 
-                String first = Supporter.firstStringFrom(refer[index]);
+                String first = Supporter.firstStringFrom(element);
                 String second = marker.getTitle();
 
                 if (first.equals(second)) {
-                    Object obj = refer[index];
-                    contentsArray.remove(obj);
+                    contentsArray.remove(element);
                 }
             }
 
             Marker[] referMarker = storedMarker.toArray(new Marker[storedMarker.size()]);
             //remove latlng array
-            for (int index = 0; index < referMarker.length; index ++) {
-                if (referMarker[index].equals(marker)) {
-                    storedMarker.remove(referMarker[index]);
+            for (Marker markerElement : referMarker) {
+                if (markerElement.equals(marker)) {
+                    storedMarker.remove(markerElement);
                 }
             }
 
@@ -179,13 +176,12 @@ public class MapsActivity extends FragmentActivity
                     if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED ) {
                         // permission granted
                         LatLng current = deviceCurrentLocation();
-                        this.initLocateOf(current,"Current location", mMap);
+                        this.initLocateOf(current, mMap);
 
                     } else {
                         // not granted - permission denied
                         Supporter.makeToast("Cannot located device, set default place to Weimar",this);
                     }
-                    return;
                 }
             }
         }
@@ -197,7 +193,7 @@ public class MapsActivity extends FragmentActivity
         textField = findViewById(R.id.nameTextEdit);
         polygonButton = findViewById(R.id.polygonButton);
 
-        pref_name = getString(R.string.marker_pref_name);
+        String pref_name = getString(R.string.marker_pref_name);
         pref_key_index = getString(R.string.marker_pref_key);
 
         sharedPref_OldContents = MapsActivity.this.
@@ -229,7 +225,7 @@ public class MapsActivity extends FragmentActivity
                 MY_PERMISSIONS_REQUEST_READ_CONTACTS);
     }
 
-    private void initLocateOf(LatLng location, String title, GoogleMap map) {
+    private void initLocateOf(LatLng location, GoogleMap map) {
         //move camera to new marked with zoom level 12
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 12.0f));
         //zoom in to map til level 16 in 2 seconds
@@ -263,9 +259,8 @@ public class MapsActivity extends FragmentActivity
                     Supporter.defaultLocation().getLongitude());
         } else {
             //get current latitude and longitude
-            Location currentLocation = (mLocationManager != null) ?
-                    mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) :
-                    mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+            assert mLocationManager != null;
+            Location currentLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
 
@@ -278,9 +273,11 @@ public class MapsActivity extends FragmentActivity
             contentsArray = new ArrayList<>();
         }
         int maxIndex = this.sharedPref_OldContents.getInt(pref_key_index,0);
-        for (int index = 0; index <= maxIndex; index++) {
+        int index = 0;
+        while (index <= maxIndex) {
             String content = this.sharedPref_OldContents.getString(String.valueOf(index),"");
             contentsArray.add(index,content);
+            index++;
         }
     }
 
@@ -291,9 +288,12 @@ public class MapsActivity extends FragmentActivity
                 String.valueOf(latLng.longitude);
         contentsArray.add(contentsArray.size(),content);
         int index = 0;
-        for (String markContent : contentsArray) {
-            editor.putString(String.valueOf(index),markContent);
+        int i = 0;
+        while (i < contentsArray.size()) {
+            String markContent = contentsArray.get(i);
+            editor.putString(String.valueOf(index), markContent);
             index++;
+            i++;
         }
         editor.putInt(pref_key_index, index);
         editor.apply();
@@ -302,9 +302,12 @@ public class MapsActivity extends FragmentActivity
     private void saveCurrentMarks() {
         SharedPreferences.Editor editor = this.sharedPref_OldContents.edit();
         int index = 0;
-        for (String content : contentsArray) {
-            editor.putString(String.valueOf(index),content);
+        int i = 0;
+        while (i < contentsArray.size()) {
+            String content = contentsArray.get(i);
+            editor.putString(String.valueOf(index), content);
             index++;
+            i++;
         }
         editor.putInt(pref_key_index, index);
         editor.apply();
@@ -316,8 +319,11 @@ public class MapsActivity extends FragmentActivity
 
     private boolean initPolygon(GoogleMap map) {
         ArrayList<LatLng> positions = new ArrayList<>();
-        for (Marker marker : storedMarker) {
+        int i = 0;
+        while (i < storedMarker.size()) {
+            Marker marker = storedMarker.get(i);
             positions.add(marker.getPosition());
+            i++;
         }
 
         LatLng[] list = new LatLng[positions.size()];
@@ -359,6 +365,7 @@ public class MapsActivity extends FragmentActivity
         return false;
     }
 
+    @SuppressLint("SetTextI18n")
     public void clickPolygon(View sender) {
         final int status = (Integer) sender.getTag();
         if (status == 0) {

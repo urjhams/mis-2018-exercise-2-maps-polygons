@@ -1,7 +1,6 @@
 package com.example.mis.polygons;
 
 import android.app.Activity;
-import android.app.LauncherActivity;
 import android.content.Context;
 import android.location.Location;
 import android.view.Gravity;
@@ -16,11 +15,11 @@ import com.google.maps.android.SphericalUtil;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class Supporter {
     private static DecimalFormat twoDecimalDouble = new DecimalFormat(".##");
+
     public static void makeToast(String content, Context context) {
         Toast toast = Toast.makeText(context,content,Toast.LENGTH_SHORT);
         toast.setGravity(Gravity.CENTER,0,0);
@@ -30,10 +29,8 @@ public class Supporter {
     public static void hideKeyboardOf(EditText textField, Activity activity) {
         InputMethodManager inputMng =
                 (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-        try {
+        if (inputMng != null) {
             inputMng.hideSoftInputFromWindow(textField.getWindowToken(), 0);
-        } catch (NullPointerException ex) {
-
         }
     }
 
@@ -50,13 +47,12 @@ public class Supporter {
     }
 
     public static ArrayList<LatLng> sortedPositionFrom(final LatLng center, ArrayList<LatLng> inputList) {
-        ArrayList<LatLng> resultList = inputList;
-        Collections.sort(resultList, (LatLng point1, LatLng point2) -> {
+        Collections.sort(inputList, (LatLng point1, LatLng point2) -> {
             double degree1 = Math.toDegrees(Math.atan2(point1.longitude - center.longitude,point1.latitude - center.latitude) + 360) % 360;
             double degree2 = Math.toDegrees(Math.atan2(point2.longitude - center.longitude,point2.latitude - center.latitude) + 360) % 360;
             return (int) (degree1 - degree2);
         });
-        return resultList ;
+        return inputList;
     }
 
     public static Location defaultLocation() {
@@ -91,13 +87,6 @@ public class Supporter {
             centerLat += points.get(index).getPosition().latitude;
             centerLong += points.get(index).getPosition().longitude;
         }
-
-        for (int index = 0 ; index < points.size(); index ++) {
-
-        }
-
-
-
         return new LatLng(centerLat / points.size(), centerLong / points.size());
     }
 
@@ -159,9 +148,7 @@ public class Supporter {
     static class Line {
         LatLng start;
         LatLng end;
-        double x;
-        double y;
-        public Line(LatLng start, LatLng end) {
+        Line(LatLng start, LatLng end) {
             this.start = start;
             this.end = end;
 
